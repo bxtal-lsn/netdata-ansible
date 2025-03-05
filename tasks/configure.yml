@@ -7,12 +7,19 @@
   become_method: sudo
 
   tasks:
-  - template:
-      src: ../templates/netdata.conf.j2
+  - name: Create netdata.conf directory if it does not exist
+    file:
+      path: /etc/netdata
+      state: directory
+      mode: '0755'
+      
+  - name: Configure Netdata
+    template:
+      src: "../templates/netdata.conf.j2"
       dest: /etc/netdata/netdata.conf
       owner: root
-      group: root
-      mode: u=wrx,g=rx,o=r,+x
+      group: netdata
+      mode: '0644'
     notify: Restart Netdata
     become: true
   

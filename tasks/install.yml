@@ -11,10 +11,13 @@
     get_url:
       url: https://my-netdata.io/kickstart.sh
       dest: ~/kickstart.sh
-      mode: +x
+      mode: '0755'
 
-  - name: Install Netdata
-    command: ~/kickstart.sh --dont-wait
+  - name: Install Netdata without cloud connection
+    command: ~/kickstart.sh --dont-wait --stable-channel --disable-telemetry --disable-cloud
+    args:
+      creates: /usr/sbin/netdata
+    register: install_result
 
   - name: Cleanup installation script
     file:

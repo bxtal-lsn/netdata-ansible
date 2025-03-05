@@ -1,0 +1,5 @@
+---
+# File: playbook.yml
+- import_playbook: tasks/install.yml
+
+- import_playbook: tasks/configure.yml
