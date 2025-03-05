@@ -1,0 +1,83 @@
+---
+- name: Completely Remove Netdata
+  hosts: all
+  become: true
+  become_method: sudo
+  
+  tasks:
+    - name: Stop and disable Netdata service
+      systemd:
+        name: netdata
+        state: stopped
+        enabled: false
+      ignore_errors: yes
+
+    - name: Check if Netdata uninstaller exists
+      stat:
+        path: /usr/libexec/netdata/netdata-uninstaller.sh
+      register: uninstaller_check
+
+    - name: Run Netdata uninstaller if it exists
+      command: /usr/libexec/netdata/netdata-uninstaller.sh --yes --force
+      when: uninstaller_check.stat.exists
+      ignore_errors: yes
+
+    - name: Remove alternative uninstaller locations if they exist
+      command: "{{ item }} --yes --force"
+      with_items:
+        - /opt/netdata/usr/libexec/netdata/netdata-uninstaller.sh
+        - /usr/lib/x86_64-linux-gnu/netdata/netdata-uninstaller.sh
+      ignore_errors: yes
+      when: "not uninstaller_check.stat.exists"
+
+    - name: Remove Netdata packages if installed via package manager
+      package:
+        name: netdata
+        state: absent
+      ignore_errors: yes
+
+    - name: Remove Netdata directories
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /etc/netdata
+        - /var/lib/netdata
+        - /var/cache/netdata
+        - /var/log/netdata
+        - /opt/netdata
+        - /usr/libexec/netdata
+        - /usr/share/netdata
+        - /usr/lib/netdata
+
+    - name: Remove Netdata user and group
+      user:
+        name: netdata
+        state: absent
+        remove: yes
+      ignore_errors: yes
+
+    - name: Remove Netdata group if it exists
+      group:
+        name: netdata
+        state: absent
+      ignore_errors: yes
+
+    - name: Check for remaining Netdata files
+      find:
+        paths: 
+          - /etc
+          - /var/lib
+          - /usr/lib
+        patterns: "*netdata*"
+        recurse: yes
+      register: remaining_files
+
+    - name: Report any remaining Netdata files
+      debug:
+        msg: "Remaining Netdata files: {{ remaining_files.files | map(attribute='path') | list }}"
+      when: remaining_files.files | length > 0
+
+    - name: Reload systemd to remove any lingering service definitions
+      systemd:
+        daemon_reload: yes
